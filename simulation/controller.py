@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def lyapunov_control(state, theta_ddot_e, params, k, p):
+def lyapunov_control(state, theta_ddot_e, params, k, p, cart=0.5):
     """
     Lyapunov-based nonlinear feedback control law.
 
@@ -23,14 +23,14 @@ def lyapunov_control(state, theta_ddot_e, params, k, p):
     -------
     u : float, force to apply to the cart (N)
     """
-    _, x_dot, theta, theta_dot = state
+    x, x_dot, theta, theta_dot = state
     M, m, L, g, b = params['M'], params['m'], params['L'], params['g'], params['b']
 
     cos_th = np.cos(theta)
     sin_th = np.sin(theta)
 
     u = ((M + m) * g / cos_th) * sin_th \
-      + ((M + m) * L / cos_th) * (k * theta + p * theta_dot) \
+      + ((M + m) * L / cos_th) * (k * theta + p * theta_dot + cart * k * x + cart * p * x_dot) \
       + m * L * theta_ddot_e * cos_th \
       - m * L * theta_dot**2 * sin_th \
       + b * x_dot
