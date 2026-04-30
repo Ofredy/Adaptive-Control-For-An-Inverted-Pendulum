@@ -80,15 +80,16 @@ def animate(t, states, params, save_path=None, speedup=1.0):
     return anim
 
 
-def plot_states(t, states, forces=None):
+def plot_states(t, states, forces=None, save_path=None):
     """
     Plot state trajectories over time.
 
     Parameters
     ----------
-    t      : 1-D time array
-    states : (4, N) array — [x, x_dot, theta, theta_dot]
-    forces : optional 1-D array of applied forces
+    t         : 1-D time array
+    states    : (4, N) array — [x, x_dot, theta, theta_dot]
+    forces    : optional 1-D array of applied forces
+    save_path : if provided, save figure here and close; otherwise show
     """
     x, x_dot, theta, theta_dot = states
 
@@ -123,4 +124,10 @@ def plot_states(t, states, forces=None):
         ax.grid(True, linewidth=0.5, alpha=0.7)
 
     plt.tight_layout()
-    plt.show(block=True)
+
+    if save_path:
+        plt.savefig(save_path, dpi=150)
+        plt.close(fig)
+        print(f"Saved: {save_path}")
+    else:
+        plt.show(block=True)

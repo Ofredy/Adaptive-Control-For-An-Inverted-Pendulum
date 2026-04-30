@@ -1,4 +1,5 @@
 import argparse
+import os
 import numpy as np
 from simulation.dynamics import CartPendulum
 from simulation.controller import lyapunov_control, ThetaDdotEstimator
@@ -8,6 +9,7 @@ parser = argparse.ArgumentParser(description="Cart-pendulum Lyapunov controller"
 parser.add_argument("-k",    type=float, default=50.0, help="Proportional gain on theta")
 parser.add_argument("-p",    type=float, default=1.0,  help="Derivative gain on theta_dot")
 parser.add_argument("--cart-weight", type=float, default=0.1,  help="Scale factor on cart position/velocity gains")
+parser.add_argument("--animate", action="store_true", help="Show animation after simulation")
 args = parser.parse_args()
 
 k           = args.k
@@ -47,7 +49,6 @@ force_log  = []
 while t < t_end - 1e-10:
     theta_dot    = state[3]
     theta_ddot_e = estimator.update(theta_dot, dt)
-
     u = lyapunov_control(state, theta_ddot_e, params, k=k, p=p, cart=cart_weight)
     force_log.append(u)
 
@@ -65,8 +66,10 @@ states_arr = np.array(state_log).T   # shape (4, N)
 forces_arr = np.array(force_log)
 
 # --- Visualize ---
-print("Plotting state trajectories...")
-plot_states(t_arr, states_arr, forces=forces_arr)
+os.makedirs("results", exist_ok=True)
+print("Saving state trajectories...")
+plot_states(t_arr, states_arr, forces=forces_arr, save_path="results/single_run_states.png")
 
-print("Running animation...")
-animate(t_arr, states_arr, params)
+if args.animate:
+    print("Running animation...")
+    animate(t_arr, states_arr, params)

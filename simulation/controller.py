@@ -1,6 +1,44 @@
 import numpy as np
 
 
+class GainScheduler:
+    """
+    Two-zone gain scheduler with linear interpolation on k and p only.
+
+    Cart weight is constant throughout — only theta gains are scheduled.
+
+    Far zone  (|theta| >= theta_far) : high k and p
+    Near zone (|theta| <= theta_near): lower k and p
+    Between   : linear interpolation
+    """
+
+    def __init__(self,
+                 theta_near=np.radians(5),
+                 theta_far=np.radians(15),
+                 k_far=50.0, p_far=1.0,
+                 k_near=25.0, p_near=0.5):
+        self.theta_near = theta_near
+        self.theta_far  = theta_far
+        self.k_far      = k_far
+        self.p_far      = p_far
+        self.k_near     = k_near
+        self.p_near     = p_near
+
+    def update(self, theta):
+        """Return (k, p) for the current theta."""
+        abs_theta = abs(theta)
+
+        if abs_theta >= self.theta_far:
+            return self.k_far, self.p_far
+        elif abs_theta <= self.theta_near:
+            return self.k_near, self.p_near
+        else:
+            alpha = (abs_theta - self.theta_near) / (self.theta_far - self.theta_near)
+            k = (1 - alpha) * self.k_near + alpha * self.k_far
+            p = (1 - alpha) * self.p_near + alpha * self.p_far
+            return k, p
+
+
 def lyapunov_control(state, theta_ddot_e, params, k, p, cart=0.5):
     """
     Lyapunov-based nonlinear feedback control law.
@@ -13,11 +51,11 @@ def lyapunov_control(state, theta_ddot_e, params, k, p, cart=0.5):
 
     Parameters
     ----------
-    state       : [x, x_dot, theta, theta_dot]
-    theta_ddot_e: estimated pendulum angular acceleration (finite difference)
-    params      : dict with keys M, m, L, g, b
-    k           : proportional gain on theta
-    p           : derivative gain on theta_dot
+    state        : [x, x_dot, theta, theta_dot]
+    theta_ddot_e : estimated pendulum angular acceleration (finite difference)
+    params       : dict with keys M, m, L, g, b
+    k            : proportional gain on theta
+    p            : derivative gain on theta_dot
 
     Returns
     -------
