@@ -73,7 +73,7 @@ def lyapunov_control(state, theta_ddot_e, params, k, p, cart=0.5):
       - m * L * theta_dot**2 * sin_th \
       + b * x_dot
 
-    return u
+    return np.clip(u, -50.0, 50.0)
 
 
 class ThetaDdotEstimator:
@@ -91,3 +91,55 @@ class ThetaDdotEstimator:
         theta_ddot_e = (theta_dot - self._theta_dot_prev) / dt
         self._theta_dot_prev = theta_dot
         return theta_ddot_e
+
+
+class XDdotEstimator:
+    """Finite-difference estimator for cart acceleration."""
+
+    def __init__(self, x_dot_0):
+        self._x_dot_prev = x_dot_0
+
+    def update(self, x_dot, dt):
+        x_ddot_e = (x_dot - self._x_dot_prev) / dt
+        self._x_dot_prev = x_dot
+        return x_ddot_e
+
+
+class ParameterEstimator:
+    """
+    Online gradient-descent estimator for pendulum mass m and cart friction b.
+
+    Uses the x-equation regressor:
+        m*φ₁ + b*x_dot = u - M*x_ddot    (= y)
+        φ₁ = x_ddot + L*cos(θ)*θ_ddot - L*θ_dot²*sin(θ)
+
+    Prediction error:
+        ε = m_hat*φ₁ + b_hat*x_dot - y
+
+    Normalized gradient update:
+        m_hat -= γ_m * ε * φ₁ / norm * dt
+        b_hat -= γ_b * ε * x_dot / norm * dt
+        norm  = φ₁² + x_dot² + 1
+    """
+
+    def __init__(self, m_hat_0, b_hat_0, gamma_m=0.2, gamma_b=0.1):
+        self.m_hat   = m_hat_0
+        self.b_hat   = b_hat_0
+        self.gamma_m = gamma_m
+        self.gamma_b = gamma_b
+
+    def update(self, state, x_ddot, theta_ddot, u, params, dt):
+        x, x_dot, theta, theta_dot = state
+        M, L = params['M'], params['L']
+
+        phi1 = x_ddot + L * np.cos(theta) * theta_ddot - L * theta_dot**2 * np.sin(theta)
+        phi2 = x_dot
+        y    = u - M * x_ddot
+
+        eps  = self.m_hat * phi1 + self.b_hat * phi2 - y
+        norm = phi1**2 + phi2**2 + 1.0
+
+        self.m_hat -= self.gamma_m * eps * phi1 / norm * dt
+        self.b_hat -= self.gamma_b * eps * phi2 / norm * dt
+
+        return self.m_hat, self.b_hat
